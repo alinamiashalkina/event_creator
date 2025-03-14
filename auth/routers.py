@@ -8,6 +8,7 @@ from auth.auth import (
     get_token_payload, get_token_expire,
     create_access_token, create_refresh_token,
 )
+from auth.schemas import RefreshTokenRequest
 from db.models import BlacklistedToken, User
 from db.db import get_db
 
@@ -63,9 +64,10 @@ async def logout(
 
 @router.post("/refresh")
 async def get_new_access_token(
-    refresh_token: str,
+    token_request: RefreshTokenRequest,
     db: AsyncSession = Depends(get_db)
 ):
+    refresh_token = token_request.refresh_token
     payload = get_token_payload(refresh_token)
 
     if payload.get("type") != "refresh":

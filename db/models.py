@@ -47,6 +47,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True),
                         default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True),
+                        default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
     is_active = Column(Boolean, default=False)
 
@@ -70,6 +71,7 @@ class Contractor(Base):
     created_at = Column(DateTime(timezone=True),
                         default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True),
+                        default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
     average_rating = Column(DECIMAL(3, 2), default=None)
 
@@ -95,7 +97,7 @@ class ContractorService(Base):
     contractor_id = Column(Integer, ForeignKey("contractor.id"))
     description = Column(Text, nullable=False)
     # значение цены может быть указано "по запросу"
-    prise = Column(String, nullable=False)
+    price = Column(String, nullable=False)
 
     service = relationship("Service",
                            back_populates="contractors_services")
@@ -114,6 +116,7 @@ class PortfolioItem(Base):
     created_at = Column(DateTime(timezone=True),
                         default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True),
+                        default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
 
     contractor = relationship("Contractor",

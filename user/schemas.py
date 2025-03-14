@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
 
-from pydantic import BaseModel, EmailStr, Field, PositiveInt
+from pydantic import BaseModel, EmailStr, Field, PositiveInt, condecimal
 
 from service.schemas import ServiceSchema
 
@@ -84,16 +84,17 @@ class ContractorServiceListSchema(BaseModel):
 class ContractorServiceSchema(BaseModel):
     service: ServiceSchema
     description: str = Field(..., min_length=5)
-    prise: str = Field(..., min_length=3)
+    price: str = Field(..., min_length=3)
 
     class Config:
         from_attributes = True
 
 
 class ContractorServiceCreateSchema(BaseModel):
-    service_id: int
+    service_id: PositiveInt
+    contractor_id: Optional[PositiveInt]
     description: str = Field(..., min_length=5)
-    prise: str = Field(..., min_length=3)
+    price: str = Field(..., min_length=3)
 
     class Config:
         from_attributes = True
@@ -101,7 +102,7 @@ class ContractorServiceCreateSchema(BaseModel):
 
 class ContractorServiceUpdateSchema(BaseModel):
     description: Optional[str] = Field(None, min_length=5)
-    prise: Optional[str] = Field(None, min_length=3)
+    price: Optional[str] = Field(None, min_length=3)
 
     class Config:
         from_attributes = True
@@ -112,6 +113,16 @@ class PortfolioItemSchema(BaseModel):
     url: str
     description: str = Field(..., min_length=5)
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PortfolioItemAddSchema(BaseModel):
+    contractor_id: PositiveInt
+    type: str
+    url: str
+    description: str = Field(..., min_length=5)
 
     class Config:
         from_attributes = True
@@ -130,16 +141,17 @@ class ContractorRegistrationSchema(BaseModel):
     user: UserRegistrationSchema
     photo: str
     description: str = Field(..., min_length=5)
-    services: List[ContractorServiceSchema]
-    portfolio_items: Optional[List[PortfolioItemSchema]] = []
+    services: List[ContractorServiceCreateSchema]
+    portfolio_items: Optional[List[PortfolioItemAddSchema]] = None
 
     class Config:
         from_attributes = True
 
 
 class ContractorApplicationListSchema(BaseModel):
-    id: PositiveInt = Field(...)
+    id: PositiveInt
     user: UserOutSchema
+    description: str
     created_at: datetime
 
     class Config:
@@ -161,29 +173,13 @@ class ContractorApplicationSchema(BaseModel):
         from_attributes = True
 
 
-class ContractorListOutSchema(BaseModel):
-    id: PositiveInt = Field(...)
-    user: UserOutSchema
-    photo: str
-    description: str
-    is_approved: bool
-    created_at: datetime
-    updated_at: datetime
-    average_rating: Optional[Decimal] = None
-
-    class Config:
-        from_attributes = True
-
-
 class ContractorSchema(BaseModel):
     id: PositiveInt = Field(...)
     user_id: PositiveInt
-    photo: str
     description: str
     is_approved: bool
     created_at: datetime
-    updated_at: datetime
-    average_rating: Optional[Decimal] = None
+    average_rating: condecimal(max_digits=3, decimal_places=2) | None
 
     class Config:
         from_attributes = True
@@ -197,7 +193,7 @@ class ContractorOutSchema(BaseModel):
     is_approved: bool
     created_at: datetime
     updated_at: datetime
-    average_rating: Optional[Decimal] = None
+    average_rating: condecimal(max_digits=3, decimal_places=2) | None
     services: List[ContractorServiceSchema]
     portfolio_items: Optional[List[PortfolioItemSchema]] = []
 

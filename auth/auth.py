@@ -106,7 +106,7 @@ async def auth_middleware(request: Request, call_next):
     """
 
     public_endpoints = [
-        "/register/admin", "/register/contractor", "/login", "/refresh"
+        "/register/user", "/register/contractor", "/login", "/refresh"
     ]
     if request.url.path in public_endpoints:
         return await call_next(request)

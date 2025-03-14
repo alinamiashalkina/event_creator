@@ -26,11 +26,12 @@ from user.schemas import (
     UserRegistrationSchema, UserOutSchema, UserUpdateSchema,
     ContractorRegistrationSchema, ContractorApplicationSchema,
     ContractorOutSchema, ContractorApplicationListSchema,
-    ContractorListOutSchema, ContractorUpdateSchema,
+    ContractorUpdateSchema,
     ContractorServiceSchema, ContractorServiceListSchema,
     ContractorServiceUpdateSchema, ContractorServiceCreateSchema,
     PortfolioItemSchema, PortfolioItemUpdateSchema,
     ReviewListSchema, ReviewCreateSchema, ReviewSchema, ContractorSchema,
+    PortfolioItemAddSchema,
 )
 from user.utils import (
     get_review_or_404,
@@ -42,8 +43,7 @@ router = APIRouter()
 
 
 @router.post("/register/admin",
-             # dependencies=[Depends(admin_only_permission)]
-)
+             dependencies=[Depends(admin_only_permission)])
 async def register_admin(user: UserRegistrationSchema,
                          db: AsyncSession = Depends(get_db)):
     """
@@ -136,7 +136,7 @@ async def get_users(
 async def user_detail(user_id: int,
                       user: User = Depends(admin_or_self_user_permission)):
     """
-    Получение деталей конкретного пользователя (заказчика).
+    Получение деталей конкретного пользователя.
     Доступно только админам и самому пользователю.
     """
     return user
@@ -171,7 +171,7 @@ async def delete_user(user_id: int,
                       user: User = Depends(admin_or_self_user_permission),
                       db: AsyncSession = Depends(get_db)):
     """
-    Удаление пользователя (заказчика).
+    Удаление пользователя.
     Доступно только админам и самому пользователю.
     """
 
@@ -183,7 +183,9 @@ async def delete_user(user_id: int,
 async def register_contractor(contractor: ContractorRegistrationSchema,
                               db: AsyncSession = Depends(get_db)):
     """
-    Регистрация подрядчика. Создаются записи в таблицах users и contractor.
+    Регистрация подрядчика. Создаются записи в таблицах users и contractor,
+    contractor_service и если переданы элементы портфолио - записи в таблице
+    portfolio_item.
     До подтверждения регистрации админом пользователь неактивен,
     статус подрядчика - не подтвержден.
     """
@@ -199,13 +201,13 @@ async def register_contractor(contractor: ContractorRegistrationSchema,
                             detail="User with this username or email "
                                    "already exists.")
 
-    hashed_password = hash_password(contractor.password)
+    hashed_password = hash_password(contractor.user.password)
     new_user = User(
-        username=contractor.username,
-        email=contractor.email,
+        username=username,
+        email=email,
         password_hash=hashed_password,
-        name=contractor.name,
-        contact_data=contractor.contact_data,
+        name=contractor.user.name,
+        contact_data=contractor.user.contact_data,
         role=UserRole.CONTRACTOR,
         is_active=False
     )
@@ -217,19 +219,40 @@ async def register_contractor(contractor: ContractorRegistrationSchema,
         user_id=new_user.id,
         photo=contractor.photo,
         description=contractor.description,
-        services=contractor.services,
-        portfolio_items=contractor.portfolio_items,
         is_approved=False
     )
     db.add(new_contractor)
     await db.commit()
     await db.refresh(new_contractor)
 
+    for service in contractor.services:
+        new_contractor_service = ContractorService(
+            service_id=service.service_id,
+            contractor_id=new_contractor.id,
+            description=service.description,
+            price=service.price
+        )
+        db.add(new_contractor_service)
+        await db.commit()
+        await db.refresh(new_contractor_service)
+
+    if contractor.portfolio_items:
+        for item in contractor.portfolio_items:
+            new_item = PortfolioItem(
+                contractor_id=new_contractor.id,
+                type=item.type,
+                url=item.url,
+                description=item.description
+            )
+            db.add(new_item)
+            await db.commit()
+            await db.refresh(new_item)
+
     return {"msg": "Contractor registration submitted successfully",
             "contractor_id": new_contractor.id}
 
 
-@router.get("/contractor_applications/",
+@router.get("/contractor_applications",
             dependencies=[Depends(admin_only_permission)],
             response_model=List[ContractorApplicationListSchema])
 async def get_contractor_applications(
@@ -288,7 +311,7 @@ async def contractor_application_detail(contractor_id: int,
 
 
 @router.post(
-    "/contractor_applications/{contractor_id}/approve_contractor/",
+    "/contractor_applications/{contractor_id}/approve_contractor",
     dependencies=[Depends(admin_only_permission)]
 )
 async def approve_contractor(contractor_id: int,
@@ -314,14 +337,16 @@ async def approve_contractor(contractor_id: int,
 
 
 @router.post(
-    "/contractor_applications/{contractor_id}/reject_contractor/",
+    "/contractor_applications/{contractor_id}/reject_contractor",
     dependencies=[Depends(admin_only_permission)]
 )
 async def reject_contractor(contractor_id: int,
                             db: AsyncSession = Depends(get_db)):
     """
     Отклонение регистрации подрядчика. Удаляются записи в таблицах users
-    и contractor. Доступно только админам.
+    и contractor, а также связанные с ними записи в других таблицах,
+    в соответствии с настройками каскадного удаления.
+    Доступно только админам.
     """
     contractor = await db.get(Contractor, contractor_id)
     if not contractor:
@@ -338,7 +363,7 @@ async def reject_contractor(contractor_id: int,
     return {"msg": "Contractor rejected and user record deleted"}
 
 
-@router.get("/contractors", response_model=List[ContractorListOutSchema])
+@router.get("/contractors", response_model=List[ContractorSchema])
 async def get_contractors(
         db: AsyncSession = Depends(get_db),
         skip: int = Query(0, ge=0),
@@ -379,7 +404,7 @@ async def contractor_detail(contractor_id: int,
 
 
 @router.patch("/contractors/{contractor_id}",
-              response_model=ContractorSchema)
+              response_model=ContractorOutSchema)
 async def update_contractor(contractor_id: int,
                             data: ContractorUpdateSchema,
                             contractor: Contractor = Depends(
@@ -562,7 +587,7 @@ async def get_contractor_portfolio(
 
 
 @router.post("/contractors/{contractor_id}/portfolio",
-             response_model=PortfolioItemSchema)
+             response_model=PortfolioItemAddSchema)
 async def create_portfolio_item(
         contractor_id: int,
         data: PortfolioItemSchema,

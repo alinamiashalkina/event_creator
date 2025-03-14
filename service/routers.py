@@ -13,7 +13,7 @@ from service.schemas import (
     CategorySchema, CategoryCreateSchema, CategoryUpdateSchema,
     ServiceSchema, ServiceCreateSchema, ServiceUpdateSchema,
 )
-from user.schemas import ContractorListOutSchema, PortfolioItemSchema
+from user.schemas import ContractorSchema, PortfolioItemSchema
 from service.utils import get_category_or_404, get_service_or_404
 
 router = APIRouter()
@@ -211,7 +211,7 @@ async def delete_service(category_id: int,
 
 @router.get(
     "/service_categories/{category_id}/services/{service_id}/contractors",
-    response_model=List[ContractorListOutSchema])
+    response_model=List[ContractorSchema])
 async def get_contractors_by_service(
         category_id: int,
         service_id: int,
