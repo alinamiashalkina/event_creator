@@ -1,0 +1,12 @@
+fastapi~=0.115.8
+SQLAlchemy~=2.0.37
+alembic
+asyncpg
+python-dotenv~=1.0.1
+fastapi[standard]
+pydantic~=2.10.6
+pydantic[email]
+bcrypt~=4.3.0
+python-jose
+uvicorn~=0.34.0
+
