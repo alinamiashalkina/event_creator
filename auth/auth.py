@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 import bcrypt
 from dotenv import load_dotenv
@@ -11,7 +12,7 @@ from sqlalchemy.future import select
 from fastapi.responses import JSONResponse
 
 from db.db import get_db
-from db.models import BlacklistedToken, User
+from db.models import BlacklistedToken, User, UserRole
 
 load_dotenv()
 
@@ -111,11 +112,11 @@ async def auth_middleware(request: Request, call_next):
     if request.url.path in public_endpoints:
         return await call_next(request)
 
-    try:
-        token = await oauth2_scheme(request)
-    except HTTPException as e:
-        return JSONResponse(status_code=e.status_code,
-                            content={"detail": e.detail})
+    token: Optional[str] = request.cookies.get("access_token")
+
+    if not token:
+        return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED,
+                            content={"detail": "Not authenticated"})
 
     async for db in get_db():
         result = await db.execute(
@@ -133,6 +134,13 @@ async def auth_middleware(request: Request, call_next):
                 content={"detail": "Account is not active. "
                                    "Please wait for admin approval."},
             )
+        if request.url.path.startswith("/admin"):
+            if user.role != UserRole.ADMIN:
+                return JSONResponse(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    content={
+                        "detail": "Access denied. Admin rights required."},
+                )
 
         request.state.user = user
 

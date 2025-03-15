@@ -1,18 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Cookie, Response
+from fastapi import Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from auth.auth import (
-    oauth2_scheme, check_password,
+    check_password,
     get_token_payload, get_token_expire,
     create_access_token, create_refresh_token,
 )
-from auth.schemas import RefreshTokenRequest
-from db.models import BlacklistedToken, User
 from db.db import get_db
+from db.models import BlacklistedToken, User
 
+templates = Jinja2Templates(directory="auth/templates")
 router = APIRouter()
+
+
+@router.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
 
 @router.post("/login")
@@ -41,33 +49,63 @@ async def login(
                                         "is_active": user.is_active})
     refresh_token = create_refresh_token({"user_id": user.id})
 
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer"
-    }
+    response = JSONResponse(content={"msg": "Login successful"})
+
+    response.set_cookie(key="access_token", value=access_token,
+                        httponly=True, samesite="lax")
+    response.set_cookie(key="refresh_token", value=refresh_token,
+                        httponly=True, samesite="lax")
+
+    return response
+
+
+@router.get("/logout", response_class=HTMLResponse)
+async def logout_page(request: Request):
+    return templates.TemplateResponse("logout.html", {"request": request})
 
 
 @router.post("/logout")
 async def logout(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
-):
-    expires_at = get_token_expire(token)
+        response: Response,
+        access_token: str = Cookie(None),
+        refresh_token: str = Cookie(None),
+        db: AsyncSession = Depends(get_db),
 
-    blacklisted_token = BlacklistedToken(token=token, expires_at=expires_at)
-    db.add(blacklisted_token)
+):
+    if not access_token:
+        return {"error": "No access token found"}
+
+    if not refresh_token:
+        return {"error": "No refresh token found"}
+
+    expires_at_access = get_token_expire(access_token)
+    expires_at_refresh = get_token_expire(refresh_token)
+
+    blacklisted_access_token = BlacklistedToken(token=access_token,
+                                                expires_at=expires_at_access)
+    db.add(blacklisted_access_token)
+    blacklisted_refresh_token = BlacklistedToken(token=refresh_token,
+                                                 expires_at=expires_at_refresh)
+    db.add(blacklisted_refresh_token)
     await db.commit()
+
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
 
     return {"message": "Logged out successfully"}
 
 
 @router.post("/refresh")
 async def get_new_access_token(
-    token_request: RefreshTokenRequest,
-    db: AsyncSession = Depends(get_db)
+        response: Response,
+        refresh_token: str = Cookie(None),
+        db: AsyncSession = Depends(get_db)
 ):
-    refresh_token = token_request.refresh_token
+    if refresh_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found in cookies"
+        )
     payload = get_token_payload(refresh_token)
 
     if payload.get("type") != "refresh":
@@ -97,8 +135,7 @@ async def get_new_access_token(
             "is_active": user.is_active
         }
     )
+    response.set_cookie(key="access_token", value=access_token,
+                        httponly=True, samesite="lax")
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
+    return {"message": "New access token has been obtained"}
