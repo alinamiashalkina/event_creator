@@ -9,4 +9,4 @@ pydantic[email]
 bcrypt~=4.3.0
 python-jose
 uvicorn~=0.34.0
-
+sqladmin
