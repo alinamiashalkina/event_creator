@@ -11,13 +11,14 @@ from admin.views import (
     PortfolioItemAdmin,
     ReviewAdmin,
     CategoryAdmin,
-    ServiceAdmin,
+    ServiceAdmin, EventAdmin, EventInvitationAdmin,
 )
 from auth.auth import auth_middleware
 from auth.routers import router as auth_router
 from db.db import engine, Base
 from service.routers import router as service_router
 from user.routers import router as users_router
+from event.routers import router as event_router
 
 
 @asynccontextmanager
@@ -33,6 +34,7 @@ app = FastAPI(title="Event Creator", lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(service_router)
+app.include_router(event_router)
 
 app.middleware("http")(auth_middleware)
 
@@ -47,6 +49,8 @@ admin.add_view(PortfolioItemAdmin)
 admin.add_view(ReviewAdmin)
 admin.add_view(CategoryAdmin)
 admin.add_view(ServiceAdmin)
+admin.add_view(EventAdmin)
+admin.add_view(EventInvitationAdmin)
 
 
 if __name__ == "__main__":
