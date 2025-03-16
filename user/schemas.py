@@ -4,6 +4,7 @@ from typing import Optional, List
 
 from pydantic import BaseModel, EmailStr, Field, PositiveInt, condecimal
 
+from db.models import UserRole
 from service.schemas import ServiceSchema
 
 
@@ -23,6 +24,7 @@ class UserOutSchema(BaseModel):
     username: str = Field(..., min_length=3)
     email: EmailStr
     name: str = Field(..., min_length=3)
+    role: UserRole
     contact_data: Optional[str] = None
     created_at: datetime
     updated_at: datetime

@@ -1,6 +1,13 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    Query,
+    BackgroundTasks,
+)
 from sqlalchemy import desc, asc, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -8,6 +15,7 @@ from sqlalchemy.orm import joinedload
 
 from auth.auth import hash_password, get_current_user
 from db.db import get_db
+from mail.mail import send_email
 from permissions import (
     admin_only_permission,
     admin_or_self_contractor_permission,
@@ -315,23 +323,25 @@ async def contractor_application_detail(contractor_id: int,
     dependencies=[Depends(admin_only_permission)]
 )
 async def approve_contractor(contractor_id: int,
+                             background_tasks: BackgroundTasks,
                              db: AsyncSession = Depends(get_db)):
     """
     Одобрение регистрации подрядчика. Статус пользователя изменяется
     на активный, статус подрядчика изменяется на "подтвержден".
     Доступно только админам.
     """
-    result = await db.execute(
-        select(Contractor).where(Contractor.id == contractor_id)
-    )
-    contractor = result.scalar_one_or_none()
-    if contractor is None:
-        raise HTTPException(status_code=404, detail="Contractor not found")
-
-    user = await db.get(User, contractor.user_id)
-    user.is_active = True
+    contractor = await get_contractor_or_404(contractor_id, db)
+    contractor.user.is_active = True
     contractor.is_approved = True
     await db.commit()
+
+    background_tasks.add_task(
+        send_email,
+        to=contractor.user.email,
+        subject="Ваша заявка одобрена",
+        template_name="approval_email.html",
+        context={"name": contractor.user.name}
+    )
 
     return {"msg": "Contractor approved successfully"}
 
@@ -341,23 +351,24 @@ async def approve_contractor(contractor_id: int,
     dependencies=[Depends(admin_only_permission)]
 )
 async def reject_contractor(contractor_id: int,
+                            background_tasks: BackgroundTasks,
                             db: AsyncSession = Depends(get_db)):
     """
-    Отклонение регистрации подрядчика. Удаляются записи в таблицах users
-    и contractor, а также связанные с ними записи в других таблицах,
-    в соответствии с настройками каскадного удаления.
+    Отклонение регистрации подрядчика. Удаляется запись в таблице users,
+    запись в таблице contractor, а также связанные записи в других таблицах,
+    удалятся в соответствии с настройками каскадного удаления.
     Доступно только админам.
     """
-    contractor = await db.get(Contractor, contractor_id)
-    if not contractor:
-        raise HTTPException(status_code=404, detail="Contractor not found")
+    contractor = await get_contractor_or_404(contractor_id, db)
 
-    user = await db.get(User, contractor.user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    await db.delete(contractor)
-    await db.delete(user)
+    background_tasks.add_task(
+        send_email,
+        to=contractor.user.email,
+        subject="Ваша заявка отклонена",
+        template_name="rejection_email.html",
+        context={"name": contractor.user.name}
+    )
+    await db.delete(contractor.user)
     await db.commit()
 
     return {"msg": "Contractor rejected and user record deleted"}

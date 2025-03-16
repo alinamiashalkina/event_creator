@@ -13,7 +13,7 @@ from service.schemas import (
     CategorySchema, CategoryCreateSchema, CategoryUpdateSchema,
     ServiceSchema, ServiceCreateSchema, ServiceUpdateSchema,
 )
-from user.schemas import ContractorSchema, PortfolioItemSchema
+from user.schemas import ContractorSchema
 from service.utils import get_category_or_404, get_service_or_404
 
 router = APIRouter()
@@ -27,6 +27,10 @@ async def get_service_categories(
         limit: int = Query(10, gt=0),
         sort_order: str = Query("asc", regex="^(asc|desc)$")
 ):
+    """
+    Получение списка категорий услуг.
+    Доступно всем зарегистрированным пользователям.
+    """
     query = select(Category)
 
     if sort_order == "desc":
@@ -48,7 +52,9 @@ async def get_service_categories(
 async def create_service_category(contractor_id: int,
                                   category: CategoryCreateSchema,
                                   db: AsyncSession = Depends(get_db)):
-
+    """
+    Создание категории услуг. Доступно только админам.
+    """
     existing_category = await db.execute(
         select(Category)
         .where(Category.name == category.name)
@@ -70,7 +76,9 @@ async def create_service_category(contractor_id: int,
             response_model=CategorySchema)
 async def category_detail(category_id: int,
                           db: AsyncSession = Depends(get_db)):
-
+    """
+    Получение деталей категории услуг.
+    """
     category = await get_category_or_404(category_id, db)
 
     return category
@@ -82,6 +90,9 @@ async def category_detail(category_id: int,
 async def update_category(category_id: int,
                           data: CategoryUpdateSchema,
                           db: AsyncSession = Depends(get_db)):
+    """
+    Обновление категори услуг. Доступно только админам.
+    """
     category = await get_category_or_404(category_id, db)
 
     category_update_data = data.model_dump(exclude_unset=True)
@@ -102,6 +113,9 @@ async def update_category(category_id: int,
                status_code=status.HTTP_204_NO_CONTENT)
 async def delete_category(category_id: int,
                           db: AsyncSession = Depends(get_db)):
+    """
+    Удаление категори услуг. Доступно только админам.
+    """
 
     category = await get_category_or_404(category_id, db)
 
@@ -118,6 +132,10 @@ async def get_services_list_by_category(
         limit: int = Query(10, gt=0),
         sort_order: str = Query("asc", regex="^(asc|desc)$")
 ):
+    """
+    Получение списка услуг определенной категории.
+    Доступно всем зарегистрированным пользователям.
+    """
     query = select(Service).where(Service.category_id == category_id)
 
     if sort_order == "desc":
@@ -135,10 +153,14 @@ async def get_services_list_by_category(
 
 @router.post("/service_categories/{category_id}/services",
              dependencies=[Depends(admin_only_permission)],
-             response_model=PortfolioItemSchema)
+             response_model=ServiceSchema)
 async def create_service(category_id: int,
                          service: ServiceCreateSchema,
                          db: AsyncSession = Depends(get_db)):
+    """
+    Создание услуги определенной категории.
+    Доступно только админам.
+    """
     existing_service = await db.execute(
         select(Service)
         .where(Service.name == service.name)
@@ -164,6 +186,9 @@ async def create_service(category_id: int,
 async def service_detail(category_id: int,
                          service_id: int,
                          db: AsyncSession = Depends(get_db)):
+    """
+    Просмотр деталей услуги. Доступно всем зарегистрированным пользователям.
+    """
 
     service = await get_service_or_404(category_id, service_id, db)
 
@@ -179,6 +204,9 @@ async def update_service(category_id: int,
                          service_id: int,
                          data: ServiceUpdateSchema,
                          db: AsyncSession = Depends(get_db)):
+    """
+    Обновление деталей услуги. Доступно только админам.
+    """
     service = await get_service_or_404(category_id, service_id, db)
 
     service_update_data = data.model_dump(exclude_unset=True)
@@ -202,7 +230,9 @@ async def update_service(category_id: int,
 async def delete_service(category_id: int,
                          service_id: int,
                          db: AsyncSession = Depends(get_db)):
-
+    """
+    Удаление услуги. Доступно только админам.
+    """
     service = await get_service_or_404(category_id, service_id, db)
 
     await db.delete(service)
