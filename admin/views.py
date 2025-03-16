@@ -11,6 +11,8 @@ from db.models import (
     Category,
     ContractorService,
     BlacklistedToken,
+    Event,
+    EventInvitation,
 )
 
 
@@ -46,9 +48,13 @@ class UserAdmin(ModelView, model=User):
     column_searchable_list = [User.username, User.email, User.name]
     column_sortable_list = [User.id, User.username, User.created_at]
 
-    form_excluded_columns = [
-        User.created_at,
-        User.updated_at,
+    form_columns = [
+        User.username,
+        User.email,
+        User.password_hash,
+        User.name,
+        User.role,
+        User.is_active,
     ]
     form_choices = {
         "role": [
@@ -62,10 +68,14 @@ class UserAdmin(ModelView, model=User):
         User.username,
         User.email,
         User.name,
+        User.contact_data,
         User.role,
         User.is_active,
         User.contractor,
         User.reviews,
+        User.created_events,
+        User.organized_events,
+        User.sent_invitations,
     ]
 
 
@@ -107,6 +117,7 @@ class ContractorAdmin(ModelView, model=Contractor):
         Contractor.services,
         Contractor.portfolio_items,
         Contractor.reviews,
+        Contractor.invitations,
     ]
 
     async def create_model(self, request, data):
@@ -282,4 +293,91 @@ class ServiceAdmin(ModelView, model=Service):
     column_details_list = [
         Service.category,
         Service.contractors_services,
+    ]
+
+
+class EventAdmin(ModelView, model=Event):
+    column_list = [
+        Event.id,
+        Event.name,
+        Event.location,
+        Event.start_time,
+        Event.end_time,
+        Event.user,
+        Event.organizer,
+    ]
+    column_details_list = [
+        Event.id,
+        Event.name,
+        Event.description,
+        Event.location,
+        Event.start_time,
+        Event.end_time,
+        Event.user,
+        Event.organizer,
+        Event.invitations,
+        Event.created_at,
+        Event.updated_at,
+    ]
+    column_searchable_list = [Event.name, Event.location]
+
+    column_filters = [
+        Event.start_time,
+        Event.end_time,
+        Event.created_at,
+        Event.updated_at,
+        Event.user,
+    ]
+    column_sortable_list = [
+        Event.id,
+        Event.start_time,
+        Event.end_time
+    ]
+    form_columns = [
+        Event.name,
+        Event.user_id,
+        Event.description,
+        Event.location,
+        Event.start_time,
+        Event.end_time,
+        "user",
+        "organizer",
+    ]
+
+
+class EventInvitationAdmin(ModelView, model=EventInvitation):
+    column_list = [
+        EventInvitation.id,
+        EventInvitation.event,
+        EventInvitation.contractor,
+        EventInvitation.sender,
+        EventInvitation.status,
+        EventInvitation.created_at,
+    ]
+
+    column_details_list = [
+        EventInvitation.id,
+        EventInvitation.event,
+        EventInvitation.contractor,
+        EventInvitation.sender,
+        EventInvitation.status,
+        EventInvitation.created_at,
+        EventInvitation.updated_at,
+    ]
+
+    column_searchable_list = [EventInvitation.status]
+
+    column_filters = [
+        EventInvitation.status,
+        EventInvitation.created_at]
+
+    column_sortable_list = [
+        EventInvitation.created_at,
+        EventInvitation.status,
+    ]
+    form_columns = [
+        EventInvitation.event,
+        EventInvitation.contractor,
+        EventInvitation.sender,
+        EventInvitation.status,
     ]

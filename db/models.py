@@ -43,7 +43,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     name = Column(String, nullable=False)
     contact_data = Column(String)
-    role = Column(SQLAEnum(UserRole), default=UserRole.USER.value)
+    role = Column(SQLAEnum(UserRole), default=UserRole.USER)
     created_at = Column(DateTime(timezone=True),
                         default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True),
@@ -53,11 +53,28 @@ class User(Base):
 
     contractor = relationship("Contractor",
                               back_populates="user",
+                              foreign_keys="[Contractor.user_id]",
                               cascade="all, delete-orphan",
                               uselist=False)
     reviews = relationship("Review",
                            back_populates="owner",
+                           foreign_keys="[Review.user_id]",
                            cascade="all, delete-orphan")
+    created_events = relationship("Event",
+                                  back_populates="user",
+                                  foreign_keys="[Event.user_id]",
+                                  cascade="all, delete-orphan")
+    organized_events = relationship("Event",
+                                    back_populates="organizer",
+                                    foreign_keys="[Event.organizer_id]",
+                                    cascade="all, delete-orphan")
+    sent_invitations = relationship("EventInvitation",
+                                    back_populates="sender",
+                                    foreign_keys="[EventInvitation.sender_id]",
+                                    cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"User(id={self.id}, username={self.username})"
 
 
 class Contractor(Base):
@@ -77,16 +94,30 @@ class Contractor(Base):
 
     user = relationship("User",
                         back_populates="contractor",
+                        foreign_keys=[user_id],
                         single_parent=True)
     services = relationship("ContractorService",
                             back_populates="contractor",
+                            foreign_keys="[ContractorService.contractor_id]",
                             cascade="all, delete-orphan")
-    portfolio_items = relationship("PortfolioItem",
-                                   back_populates="contractor",
-                                   cascade="all, delete-orphan")
+    portfolio_items = relationship(
+        "PortfolioItem",
+        back_populates="contractor",
+        foreign_keys="[PortfolioItem.contractor_id]",
+        cascade="all, delete-orphan"
+    )
     reviews = relationship("Review",
                            back_populates="contractor",
+                           foreign_keys="[Review.contractor_id]",
                            cascade="all, delete-orphan")
+    invitations = relationship("EventInvitation",
+                               back_populates="contractor",
+                               foreign_keys="[EventInvitation.recipient_id]",
+                               cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return (f"Contractor(id={self.id}, user_id={self.user_id}, "
+                f"is_approved={self.is_approved})")
 
 
 class ContractorService(Base):
@@ -100,9 +131,16 @@ class ContractorService(Base):
     price = Column(String, nullable=False)
 
     service = relationship("Service",
-                           back_populates="contractors_services")
+                           back_populates="contractors_services",
+                           foreign_keys=[service_id])
     contractor = relationship("Contractor",
-                              back_populates="services")
+                              back_populates="services",
+                              foreign_keys=[contractor_id])
+
+    def __repr__(self):
+        return (f"ContractorService(id={self.id}, "
+                f"service_id={self.service_id}, "
+                f"contractor_id={self.contractor_id})")
 
 
 class PortfolioItem(Base):
@@ -120,7 +158,13 @@ class PortfolioItem(Base):
                         onupdate=lambda: datetime.now(timezone.utc))
 
     contractor = relationship("Contractor",
-                              back_populates="portfolio_items")
+                              back_populates="portfolio_items",
+                              foreign_keys=[contractor_id])
+
+    def __repr__(self):
+        return (f"PortfolioItem(id={self.id}, "
+                f"contractor_id={self.contractor_id}, "
+                f"type={self.type})")
 
 
 class Review(Base):
@@ -134,8 +178,17 @@ class Review(Base):
     created_at = Column(DateTime(timezone=True),
                         default=lambda: datetime.now(timezone.utc))
 
-    contractor = relationship("Contractor", back_populates="reviews")
-    owner = relationship("User", back_populates="reviews")
+    contractor = relationship("Contractor",
+                              back_populates="reviews",
+                              foreign_keys=[contractor_id])
+    owner = relationship("User",
+                         foreign_keys=[user_id],
+                         back_populates="reviews")
+
+    def __repr__(self):
+        return (f"Review(id={self.id}, contractor_id={self.contractor_id}, "
+                f"user_id={self.user_id}, comment={self.comment}, "
+                f"rating={self.rating})")
 
 
 class Category(Base):
@@ -147,7 +200,11 @@ class Category(Base):
 
     services = relationship("Service",
                             back_populates="category",
+                            foreign_keys="[Service.category_id]",
                             cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"Category(id={self.id}, name={self.name})"
 
 
 class Service(Base):
@@ -157,7 +214,91 @@ class Service(Base):
     name = Column(String, unique=True)
     category_id = Column(Integer, ForeignKey("category.id"))
 
-    category = relationship("Category", back_populates="services")
-    contractors_services = relationship("ContractorService",
-                                        back_populates="service",
-                                        cascade="all, delete-orphan")
+    category = relationship("Category",
+                            back_populates="services",
+                            foreign_keys=[category_id])
+    contractors_services = relationship(
+        "ContractorService",
+        back_populates="service",
+        foreign_keys="[ContractorService.service_id]",
+        cascade="all, delete-orphan"
+    )
+
+    def __repr__(self):
+        return (f"Service(id={self.id}, name={self.name}, "
+                f"category_id={self.category_id})")
+
+
+class Event(Base):
+    __tablename__ = "event"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    organizer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    location = Column(String, nullable=False)
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    end_time = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True),
+                        default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True),
+                        default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User",
+                        back_populates="created_events",
+                        foreign_keys=[user_id])
+    organizer = relationship("User",
+                             back_populates="organized_events",
+                             foreign_keys=[organizer_id])
+    invitations = relationship("EventInvitation",
+                               back_populates="event",
+                               foreign_keys="[EventInvitation.event_id]",
+                               cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"Event(id={self.id}, name={self.name}, user_id={self.user_id})"
+
+
+class EventInvitationStatus(Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    CONFIRMED = "confirmed"
+    CANCELED = "canceled"
+
+    def __str__(self):
+        return self.value
+
+
+class EventInvitation(Base):
+    __tablename__ = "event_invitation"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_id = Column(Integer, ForeignKey("event.id"), nullable=False)
+    recipient_id = Column(Integer, ForeignKey("contractor.id"),
+                          nullable=False)
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(SQLAEnum(EventInvitationStatus),
+                    default=EventInvitationStatus.PENDING)
+    created_at = Column(DateTime(timezone=True),
+                        default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True),
+                        default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+    event = relationship("Event",
+                         back_populates="invitations",
+                         foreign_keys=[event_id])
+    contractor = relationship("Contractor",
+                              foreign_keys=[recipient_id])
+    sender = relationship("User",
+                          foreign_keys=[sender_id])
+
+    def __repr__(self):
+        return (
+            f"EventInvitation(id={self.id}, event_id={self.event_id}, "
+            f"sender_id={self.sender_id}, recipient_id={self.recipient_id},"
+            f"status={self.status})"
+        )
