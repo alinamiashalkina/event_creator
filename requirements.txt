@@ -1,12 +1,13 @@
 fastapi~=0.115.8
 SQLAlchemy~=2.0.37
-alembic
-asyncpg
+alembic~=1.15.1
+asyncpg~=0.30.0
 python-dotenv~=1.0.1
 fastapi[standard]
 pydantic~=2.10.6
 pydantic[email]
 bcrypt~=4.3.0
-python-jose
+python-jose~=3.4.0
 uvicorn~=0.34.0
-sqladmin
+sqladmin~=0.20.1
+fastapi-mail~=1.4.2
