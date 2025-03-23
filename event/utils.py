@@ -25,7 +25,7 @@ async def get_invitation_or_404(
         .where(EventInvitation.id == invitation_id)
         .options(
             joinedload(EventInvitation.sender),
-            joinedload(EventInvitation.recipient),
+            joinedload(EventInvitation.contractor),
             joinedload(EventInvitation.event)
         )
     )

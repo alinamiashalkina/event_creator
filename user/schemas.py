@@ -93,8 +93,8 @@ class ContractorServiceSchema(BaseModel):
 
 
 class ContractorServiceCreateSchema(BaseModel):
-    service_id: PositiveInt
-    contractor_id: Optional[PositiveInt]
+    service_id: Optional[PositiveInt] = None
+    contractor_id: Optional[PositiveInt] = None
     description: str = Field(..., min_length=5)
     price: str = Field(..., min_length=3)
 
@@ -111,6 +111,7 @@ class ContractorServiceUpdateSchema(BaseModel):
 
 
 class PortfolioItemSchema(BaseModel):
+    id: PositiveInt
     type: str
     url: str
     description: str = Field(..., min_length=5)
@@ -121,7 +122,7 @@ class PortfolioItemSchema(BaseModel):
 
 
 class PortfolioItemAddSchema(BaseModel):
-    contractor_id: PositiveInt
+    contractor_id: Optional[PositiveInt] = None
     type: str
     url: str
     description: str = Field(..., min_length=5)
@@ -208,9 +209,6 @@ class ContractorUpdateSchema(BaseModel):
     photo: Optional[str] = None
     description: Optional[str] = None
     is_approved: Optional[bool] = None
-    average_rating: Optional[Decimal] = None
-    services: Optional[List[ContractorServiceSchema]] = None
-    portfolio_items: Optional[List[PortfolioItemSchema]] = None
 
     class Config:
         from_attributes = True

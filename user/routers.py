@@ -11,7 +11,7 @@ from fastapi import (
 from sqlalchemy import desc, asc, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from auth.auth import hash_password, get_current_user
 from db.db import get_db
@@ -122,7 +122,7 @@ async def get_users(
         db: AsyncSession = Depends(get_db),
         skip: int = Query(0, ge=0),
         limit: int = Query(10, gt=0),
-        sort_order: str = Query("asc", regex="^(asc|desc)$")
+        sort_order: str = Query("asc", pattern="^(asc|desc)$")
 ):
     """
     Получение списка пользователей (заказчиков).
@@ -267,7 +267,7 @@ async def get_contractor_applications(
         db: AsyncSession = Depends(get_db),
         skip: int = Query(0, ge=0),
         limit: int = Query(10, gt=0),
-        sort_order: str = Query("asc", regex="^(asc|desc)$")
+        sort_order: str = Query("asc", pattern="^(asc|desc)$")
 ):
     """
     Получение списка заявок на регистрацию подрядчиков.
@@ -302,12 +302,13 @@ async def contractor_application_detail(contractor_id: int,
     """
     result = await db.execute(
         select(Contractor)
-        .join(User)
         .where(Contractor.id == contractor_id)
         .options(
             joinedload(Contractor.user),
-            joinedload(Contractor.services),
-            joinedload(Contractor.portfolio_items))
+            selectinload(Contractor.services)
+            .joinedload(ContractorService.service),
+            selectinload(Contractor.portfolio_items)
+        )
     )
 
     application = result.scalars().first()
@@ -379,7 +380,7 @@ async def get_contractors(
         db: AsyncSession = Depends(get_db),
         skip: int = Query(0, ge=0),
         limit: int = Query(10, gt=0),
-        sort_order: str = Query("asc", regex="^(asc|desc)$")
+        sort_order: str = Query("asc", pattern="^(asc|desc)$")
 ):
     """
     Получение списка подрядчиков. Сортировка по имени.
@@ -473,6 +474,7 @@ async def get_contractor_services(contractor_id: int,
     results = await db.execute(
         select(ContractorService)
         .where(ContractorService.contractor_id == contractor_id)
+        .options(joinedload(ContractorService.service))
     )
     services = results.scalars().all()
 
@@ -493,7 +495,7 @@ async def create_contractor_service(
     """
     new_service = ContractorService(
         contractor_id=contractor.id,
-        **data.model_dump()
+        **data.model_dump(exclude_unset=True)
     )
 
     db.add(new_service)
@@ -574,7 +576,7 @@ async def get_contractor_portfolio(
         db: AsyncSession = Depends(get_db),
         skip: int = Query(0, ge=0),
         limit: int = Query(10, gt=0),
-        sort_order: str = Query("asc", regex="^(asc|desc)$")
+        sort_order: str = Query("asc", pattern="^(asc|desc)$")
 ):
     """
     Получение всего портфолио подрядчика.
@@ -598,10 +600,10 @@ async def get_contractor_portfolio(
 
 
 @router.post("/contractors/{contractor_id}/portfolio",
-             response_model=PortfolioItemAddSchema)
+             response_model=PortfolioItemSchema)
 async def create_portfolio_item(
         contractor_id: int,
-        data: PortfolioItemSchema,
+        data: PortfolioItemAddSchema,
         contractor: Contractor = Depends(admin_or_self_contractor_permission),
         db: AsyncSession = Depends(get_db)
 ):
@@ -611,7 +613,7 @@ async def create_portfolio_item(
     """
     new_portfolio_item = PortfolioItem(
         contractor_id=contractor.id,
-        **data.model_dump()
+        **data.model_dump(exclude_unset=True)
     )
 
     db.add(new_portfolio_item)
@@ -634,6 +636,10 @@ async def portfolio_item_detail(contractor_id: int,
     )
 
     return portfolio_item
+
+
+class PortfolioItemUpdateSchemaSchema:
+    pass
 
 
 @router.patch(
@@ -696,7 +702,7 @@ async def get_reviews_of_contractor(
         db: AsyncSession = Depends(get_db),
         skip: int = Query(0, ge=0),
         limit: int = Query(10, gt=0),
-        sort_order: str = Query("asc", regex="^(asc|desc)$")
+        sort_order: str = Query("asc", pattern="^(asc|desc)$")
 ):
     """
     Получение списка отзывов на подрядчика. Сортировка по дате добавления.
@@ -733,7 +739,7 @@ async def create_review(
     new_review = Review(
         contractor_id=contractor_id,
         user_id=current_user.id,
-        **data.model_dump()
+        **data.model_dump(exclude_unset=True)
     )
 
     db.add(new_review)

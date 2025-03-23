@@ -25,7 +25,7 @@ async def get_service_categories(
         db: AsyncSession = Depends(get_db),
         skip: int = Query(0, ge=0),
         limit: int = Query(10, gt=0),
-        sort_order: str = Query("asc", regex="^(asc|desc)$")
+        sort_order: str = Query("asc", pattern="^(asc|desc)$")
 ):
     """
     Получение списка категорий услуг.
@@ -49,8 +49,7 @@ async def get_service_categories(
 @router.post("/service_categories",
              dependencies=[Depends(admin_only_permission)],
              response_model=CategorySchema)
-async def create_service_category(contractor_id: int,
-                                  category: CategoryCreateSchema,
+async def create_service_category(category: CategoryCreateSchema,
                                   db: AsyncSession = Depends(get_db)):
     """
     Создание категории услуг. Доступно только админам.
@@ -64,7 +63,7 @@ async def create_service_category(contractor_id: int,
                             detail="Category with this name"
                                    "already exists.")
 
-    new_category = Category(**category.model_dump())
+    new_category = Category(**category.model_dump(exclude_unset=True))
 
     db.add(new_category)
     await db.commit()
@@ -130,7 +129,7 @@ async def get_services_list_by_category(
         db: AsyncSession = Depends(get_db),
         skip: int = Query(0, ge=0),
         limit: int = Query(10, gt=0),
-        sort_order: str = Query("asc", regex="^(asc|desc)$")
+        sort_order: str = Query("asc", pattern="^(asc|desc)$")
 ):
     """
     Получение списка услуг определенной категории.
@@ -172,7 +171,7 @@ async def create_service(category_id: int,
 
     new_service = Service(
         category_id=category_id,
-        **service.model_dump()
+        **service.model_dump(exclude_unset=True)
     )
 
     db.add(new_service)
@@ -248,7 +247,7 @@ async def get_contractors_by_service(
         db: AsyncSession = Depends(get_db),
         skip: int = Query(0, ge=0),
         limit: int = Query(10, gt=0),
-        sort_order: str = Query("asc", regex="^(asc|desc)$")
+        sort_order: str = Query("asc", pattern="^(asc|desc)$")
 ):
     """
     Получение списка подрядчиков, оказывающих выбранную услугу.

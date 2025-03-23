@@ -87,7 +87,7 @@ async def admin_or_creator_or_organizer_permission(
         current_user: User = Depends(get_current_user),
         skip: int = Query(0, ge=0),
         limit: int = Query(10, gt=0),
-        sort_order: str = Query("asc", regex="^(asc|desc)$"),
+        sort_order: str = Query("asc", pattern="^(asc|desc)$"),
         db: AsyncSession = Depends(get_db)
 ):
     """
@@ -149,7 +149,7 @@ async def admin_or_creator_or_organizer_permission(
             query = query.offset(skip).limit(limit)
 
             result = await db.execute(query)
-            events = result.scalars().all()
+            events = result.scalars().unique().all()
 
         return events
 

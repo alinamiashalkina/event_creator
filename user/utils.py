@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from db.models import (
     User,
@@ -34,8 +34,12 @@ async def get_contractor_or_404(contractor_id: int, db: AsyncSession):
     result = await db.execute(
         select(Contractor)
         .where(Contractor.id == contractor_id)
-        .join(User)
-        .options(joinedload(Contractor.user))
+        .options(
+            joinedload(Contractor.user),
+            selectinload(Contractor.services)
+            .joinedload(ContractorService.service),
+            selectinload(Contractor.portfolio_items)
+        )
     )
 
     contractor = result.scalars().first()
@@ -58,6 +62,7 @@ async def get_contractor_service_or_404(contractor_id: int,
         select(ContractorService)
         .where(ContractorService.contractor_id == contractor_id)
         .where(ContractorService.id == service_id)
+        .options(joinedload(ContractorService.service))
     )
     service = result.scalars().first()
     if service is None:

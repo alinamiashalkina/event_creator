@@ -29,7 +29,7 @@ class CategoryUpdateSchema(BaseModel):
 
 class ServiceCreateSchema(BaseModel):
     name: str = Field(..., min_length=3)
-    category_id: PositiveInt
+    category_id: Optional[PositiveInt] = None
 
     class Config:
         from_attributes = True
@@ -37,7 +37,7 @@ class ServiceCreateSchema(BaseModel):
 
 class ServiceUpdateSchema(BaseModel):
     name: Optional[str] = Field(None, min_length=3)
-    category_id: Optional[PositiveInt]
+    category_id: Optional[PositiveInt] = None
 
     class Config:
         from_attributes = True

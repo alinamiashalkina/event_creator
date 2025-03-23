@@ -22,7 +22,7 @@ class BlacklistedToken(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     token = Column(String, unique=True, nullable=False)
-    expires_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
 
 
 class UserRole(Enum):

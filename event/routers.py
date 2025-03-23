@@ -11,6 +11,7 @@ from fastapi import (
 from sqlalchemy import desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 
 from db.db import get_db
 from db.models import (
@@ -37,7 +38,7 @@ from permissions import (
     admin_or_self_contractor_permission,
     admin_or_creator_or_organizer_or_invited_permission,
 )
-from user.utils import get_contractor_or_404
+from user.utils import get_contractor_or_404, get_user_or_404
 
 router = APIRouter()
 
@@ -46,7 +47,7 @@ router = APIRouter()
 async def get_events(
         skip: int = Query(0, ge=0),
         imit: int = Query(10, gt=0),
-        sort_order: str = Query("asc", regex="^(asc|desc)$"),
+        sort_order: str = Query("asc", pattern="^(asc|desc)$"),
         events: List[Event] = Depends(admin_or_creator_or_organizer_permission)
 ):
     """
@@ -143,7 +144,18 @@ async def update_event_organizer(
     или админа.
     """
 
-    contractor = await get_contractor_or_404(organizer_data.organizer_id, db)
+    organizer = await get_user_or_404(organizer_data.organizer_id, db)
+    contractor_check = await db.execute(
+        select(Contractor)
+        .where(Contractor.user_id == organizer.id)
+    )
+    contractor = contractor_check.scalars().first()
+
+    if not contractor:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The specified user is not a contractor"
+        )
 
     result = await db.execute(
         select(EventInvitation)
@@ -161,7 +173,7 @@ async def update_event_organizer(
             detail="Contractor must have a confirmed invitation to the event"
         )
 
-    event.organizer_id = contractor.id
+    event.organizer_id = contractor.user_id
     await db.commit()
     await db.refresh(event)
 
@@ -183,6 +195,8 @@ async def delete_event(
     """
     result = await db.execute(
         select(EventInvitation)
+        .options(selectinload(EventInvitation.contractor).selectinload(
+            Contractor.user))
         .where(EventInvitation.event_id == event_id)
     )
     invitations = result.scalars().all()
@@ -193,7 +207,7 @@ async def delete_event(
     for invitation in invitations:
         background_tasks.add_task(
             send_email,
-            to=invitation.recipient.user.email,
+            to=invitation.contractor.user.email,
             subject="Мероприятие отменено",
             template_name="event_deleted.html",
             context={"event_name": event.name,
@@ -203,7 +217,7 @@ async def delete_event(
     return {"message": "Event deleted successfully"}
 
 
-@router.post("/users/{user_id}/events/{event_id}/invites",
+@router.post("/users/{user_id}/events/{event_id}/invitations",
              response_model=EventInvitationOutSchema)
 async def invite_contractor(
         event_id: int,
@@ -256,14 +270,14 @@ async def invite_contractor(
     return invitation
 
 
-@router.get("/users/{user_id}/events/{event_id}/invites",
+@router.get("/users/{user_id}/events/{event_id}/invitations",
             response_model=List[EventInvitationOutSchema])
 async def get_sent_event_invitations(
         event_id: int,
         user_id: int,
         skip: int = Query(0, ge=0),
         limit: int = Query(10, gt=0),
-        sort_order: str = Query("asc", regex="^(asc|desc)$"),
+        sort_order: str = Query("asc", pattern="^(asc|desc)$"),
         event: Event = Depends(admin_or_creator_or_organizer_permission),
         db: AsyncSession = Depends(get_db)
 ):
@@ -288,7 +302,7 @@ async def get_sent_event_invitations(
     return invitations
 
 
-@router.get("/contractors/{contractor_id}/invites",
+@router.get("/contractors/{contractor_id}/invitations",
             response_model=List[EventInvitationOutSchema])
 async def get_received_invitations(
         contractor_id: int,
@@ -296,7 +310,7 @@ async def get_received_invitations(
         db: AsyncSession = Depends(get_db),
         skip: int = Query(0, ge=0),
         limit: int = Query(10, gt=0),
-        sort_order: str = Query("asc", regex="^(asc|desc)$")
+        sort_order: str = Query("asc", pattern="^(asc|desc)$")
 ):
     """
     Получение списка поступивших подрядчику приглашений к участию

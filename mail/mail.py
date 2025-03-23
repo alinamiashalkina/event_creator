@@ -22,7 +22,8 @@ fm = FastMail(conf)
 
 
 async def send_email(to: str, subject: str, template_name: str, context: dict):
-    with open(f"templates/{template_name}", "r") as file:
+    template_path = f"{conf.TEMPLATE_FOLDER}/{template_name}"
+    with open(template_path, "r", encoding="utf-8") as file:
         template = Template(file.read())
     html_content = template.render(**context)
 
