@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from fastapi.responses import JSONResponse
 
-from db.db import get_db
 from db.models import BlacklistedToken, User, UserRole
 
 load_dotenv()
@@ -117,8 +116,8 @@ async def auth_middleware(request: Request, call_next):
     if not token:
         return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED,
                             content={"detail": "Not authenticated"})
-
-    async for db in get_db():
+    get_db_context = request.app.state.get_db_context
+    async with get_db_context() as db:
         result = await db.execute(
             select(BlacklistedToken).where(BlacklistedToken.token == token))
         if result.scalars().first():

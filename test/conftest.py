@@ -28,7 +28,7 @@ TEST_DATABASE_URL = "postgresql+asyncpg://{}:{}@{}:{}/{}".format(
     os.environ["TEST_DB_NAME"]
 )
 
-engine = create_async_engine(TEST_DATABASE_URL, echo=True)
+engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 
 TestAsyncSessionLocal = async_sessionmaker(
     bind=engine,
@@ -65,6 +65,7 @@ async def get_test_db():
 @pytest_asyncio.fixture
 async def client(get_test_db):
     app.dependency_overrides[get_db] = lambda: get_test_db
+    app.state.get_db_context = lambda: get_test_db
     async with AsyncClient(base_url="http://testserver",
                            transport=ASGITransport(app)) as async_client:
         yield async_client

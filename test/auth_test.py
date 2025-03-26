@@ -1,17 +1,13 @@
-from db.models import BlacklistedToken
-from test.conftest import get_test_db
 import pytest
 from sqlalchemy.future import select
 
 from db.models import BlacklistedToken
+from test.conftest import get_test_db
 
 
 @pytest.mark.asyncio
 async def test_login_success(client, user):
-    login_data = {
-        "username": user.username,
-        "password": "testpassword"
-    }
+    login_data = {"username": user.username, "password": "testpassword"}
 
     response = await client.post("/login", data=login_data)
 
@@ -25,10 +21,7 @@ async def test_login_success(client, user):
 
 @pytest.mark.asyncio
 async def test_login_user_not_found(client):
-    login_data = {
-        "username": "nonexistent_user",
-        "password": "testpassword"
-    }
+    login_data = {"username": "nonexistent_user", "password": "testpassword"}
 
     response = await client.post("/login", data=login_data)
 
@@ -39,25 +32,20 @@ async def test_login_user_not_found(client):
 @pytest.mark.asyncio
 async def test_login_account_inactive(client, inactive_user):
 
-    login_data = {
-        "username": inactive_user.username,
-        "password": "testpassword"
-    }
+    login_data = {"username": inactive_user.username,
+                  "password": "testpassword"}
 
     response = await client.post("/login", data=login_data)
 
     assert response.status_code == 403
     assert response.json() == {
-        "detail": "Account is not active. Please wait for admin approval."}
+        "detail": "Account is not active. Please wait for admin approval."
+    }
 
 
 @pytest.mark.asyncio
 async def test_logout(client, user, get_test_db):
-    client.cookies.clear()
-    login_data = {
-        "username": user.username,
-        "password": "testpassword"
-    }
+    login_data = {"username": user.username, "password": "testpassword"}
     login_response = await client.post("/login", data=login_data)
 
     assert "access_token" in login_response.cookies
@@ -65,8 +53,9 @@ async def test_logout(client, user, get_test_db):
 
     access_token = login_response.cookies["access_token"]
 
-    logout_response = await client.post("/logout",
-                                        cookies={"access_token": access_token})
+    logout_response = await client.post(
+        "/logout", cookies={"access_token": access_token}
+    )
 
     assert logout_response.status_code == 200
     assert logout_response.json() == {"message": "Logged out successfully"}
@@ -106,10 +95,7 @@ async def test_auth_middleware_public_endpoint(client):
 @pytest.mark.asyncio
 async def test_auth_middleware_protected_endpoint_valid_token(client, user):
     client.cookies.clear()
-    login_data = {
-        "username": user.username,
-        "password": "testpassword"
-    }
+    login_data = {"username": user.username, "password": "testpassword"}
     login_response = await client.post("/login", data=login_data)
     access_token = login_response.cookies["access_token"]
 

@@ -1,5 +1,3 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from sqladmin import Admin
 
@@ -15,21 +13,13 @@ from admin.views import (
 )
 from auth.auth import auth_middleware
 from auth.routers import router as auth_router
-from db.db import engine, Base
+from db.db import engine, get_db_context
+from event.routers import router as event_router
 from service.routers import router as service_router
 from user.routers import router as users_router
-from event.routers import router as event_router
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all, checkfirst=True)
-    yield
-    await engine.dispose()
-
-
-app = FastAPI(title="Event Creator", lifespan=lifespan)
+app = FastAPI(title="Event Creator")
+app.state.get_db_context = get_db_context
 
 app.include_router(auth_router)
 app.include_router(users_router)
