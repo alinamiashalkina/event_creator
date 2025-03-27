@@ -2,7 +2,6 @@ import pytest
 from sqlalchemy.future import select
 
 from db.models import BlacklistedToken
-from test.conftest import get_test_db
 
 
 @pytest.mark.asyncio

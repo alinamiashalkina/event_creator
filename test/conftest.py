@@ -1,22 +1,19 @@
+import asyncio
 import os
+
 import pytest
 import pytest_asyncio
-import asyncio
-
 from dotenv import load_dotenv
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, \
-    async_sessionmaker
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    AsyncSession,
+    async_sessionmaker,
+)
 
 from db.db import Base, get_db
 from main import app
-
-from test.factories import (UserFactory, ContractorFactory,
-                            ContractorServiceFactory,
-                            PortfolioItemFactory, ReviewFactory,
-                            CategoryFactory, EventInvitationFactory,
-                            EventFactory, ServiceFactory, )
-
+from test.factories import UserFactory
 
 load_dotenv()
 

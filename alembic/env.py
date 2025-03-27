@@ -2,11 +2,10 @@ import asyncio
 import os
 from logging.config import fileConfig
 
-from dotenv import load_dotenv
-from sqlalchemy import engine_from_config, pool
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
 from alembic import context
+from dotenv import load_dotenv
+from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from db.models import Base
 
@@ -41,7 +40,6 @@ def run_migrations_offline():
 
 async def run_migrations_online():
     async with connectable.connect() as connection:
-        # Измените здесь вызов на do_run_migrations без передачи 'connection'
         await connection.run_sync(do_run_migrations)
 
 
@@ -54,5 +52,4 @@ def do_run_migrations(connection):
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    import asyncio
     asyncio.run(run_migrations_online())

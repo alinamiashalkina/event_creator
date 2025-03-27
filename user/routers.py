@@ -466,7 +466,7 @@ async def delete_contractor(
 @router.get("/contractors/{contractor_id}/services",
             response_model=List[ContractorServiceListSchema])
 async def get_contractor_services(contractor_id: int,
-                              db: AsyncSession = Depends(get_db)):
+                                  db: AsyncSession = Depends(get_db)):
     """
     Получение списка услуг конкретного подрядчика.
     Доступно всем зарегистрированным пользователям.
