@@ -12,10 +12,10 @@ conf = ConnectionConfig(
     MAIL_FROM=os.environ["MAIL_FROM"],
     MAIL_PORT=int(os.environ["MAIL_PORT"]),
     MAIL_SERVER=os.environ["MAIL_SERVER"],
-    MAIL_STARTTLS=os.environ["MAIL_STARTTLS"].lower() == "true",
-    MAIL_SSL_TLS=os.environ["MAIL_SSL_TLS"].lower() == "true",
-    MAIL_DEBUG=int(os.environ["MAIL_DEBUG"]),
-    TEMPLATE_FOLDER=os.environ["TEMPLATE_FOLDER"],
+    MAIL_STARTTLS=True,
+    MAIL_SSL_TLS=False,
+    MAIL_DEBUG=0,
+    TEMPLATE_FOLDER="mail/templates",
 )
 
 fm = FastMail(conf)
