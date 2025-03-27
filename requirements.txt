@@ -3,7 +3,6 @@ SQLAlchemy==2.0.37
 alembic==1.15.1
 asyncpg==0.30.0
 python-dotenv==1.0.1
-fastapi[standard]
 pydantic==2.10.6
 pydantic[email]
 bcrypt==4.3.0

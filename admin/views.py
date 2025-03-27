@@ -1,6 +1,6 @@
-from sqladmin import ModelView
+from sqladmin import ModelView, Admin
 
-from db.db import AsyncSessionLocal
+from db.db import AsyncSessionLocal, engine
 from db.models import (
     User,
     UserRole,
@@ -104,6 +104,7 @@ class ContractorAdmin(ModelView, model=Contractor):
         Contractor.photo,
         Contractor.description,
         Contractor.is_approved,
+        "user",
         "services",
         "portfolio_items",
     ]
@@ -381,3 +382,18 @@ class EventInvitationAdmin(ModelView, model=EventInvitation):
         EventInvitation.sender,
         EventInvitation.status,
     ]
+
+
+def setup_admin(app):
+    admin = Admin(app, engine)
+
+    admin.add_view(BlacklistedTokenAdmin)
+    admin.add_view(UserAdmin)
+    admin.add_view(ContractorAdmin)
+    admin.add_view(ContractorServiceAdmin)
+    admin.add_view(PortfolioItemAdmin)
+    admin.add_view(ReviewAdmin)
+    admin.add_view(CategoryAdmin)
+    admin.add_view(ServiceAdmin)
+    admin.add_view(EventAdmin)
+    admin.add_view(EventInvitationAdmin)
